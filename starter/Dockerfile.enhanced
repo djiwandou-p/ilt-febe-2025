@@ -1,0 +1,169 @@
+# Use Node.js 18 Alpine as base image for smaller size
+FROM node:18-alpine AS base
+
+# Add metadata labels
+LABEL maintainer="djiwandou.asp@gmail.com"
+LABEL version="1.0"
+LABEL description="ILT Backend JavaScript Application"
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Copy source code
+COPY --chown=nodejs:nodejs . .
+
+# Change ownership to non-root user
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Expose port
+EXPOSE 3000
+
+# Set default command
+CMD ["npm", "run", "start:prod"]
+
+# Development stage
+FROM node:18-alpine AS development
+# Set environment variables for development
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Set working directory
+WORKDIR /app
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install ALL dependencies including dev dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port
+EXPOSE 3000
+
+# Use nodemon for development
+CMD ["npm", "run", "start"]
+
+# Testing stage
+FROM node:18-alpine AS testing
+# Set environment variables for testing
+ENV NODE_ENV=test
+ENV PORT=3000
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install ALL dependencies including test dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Run tests
+CMD ["npm", "test"]
+
+# Multi-platform build
+FROM --platform=$BUILDPLATFORM node:18-alpine AS multi-platform
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+RUN echo "I'm running on $BUILDPLATFORM, building for $TARGETPLATFORM"
+
+# Cache optimization example
+FROM node:18-alpine AS cache-optimized
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (this layer will be cached if package.json doesn't change)
+RUN npm ci --only=production
+
+# Copy source code (this layer will be rebuilt if source changes)
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Use shell form for environment variable substitution
+CMD npm run start:prod
+
+# Security-focused example
+FROM node:18-alpine AS secure
+WORKDIR /app
+
+# Install security updates
+RUN apk update && apk upgrade && \
+    apk add --no-cache dumb-init
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && \
+    npm audit fix --audit-level=moderate || true
+
+# Copy source code
+COPY . .
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port
+EXPOSE 3000
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "run", "start:prod"] 

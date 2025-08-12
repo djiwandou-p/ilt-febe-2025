@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # Production service
+  ilt-backend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.enhanced
+      target: production
+    container_name: ilt-backend-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://neondb_owner:npg_t3XHxm0kiSbN@ep-still-bush-a8rhnfn6-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ilt-network
+
+  # Development service
+  ilt-backend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.enhanced
+      target: development
+    container_name: ilt-backend-dev
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://neondb_owner:npg_t3XHxm0kiSbN@ep-still-bush-a8rhnfn6-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+    restart: unless-stopped
+    volumes:
+      - ./src:/app/src:ro  # Mount source code for development
+    networks:
+      - ilt-network
+
+  # Secure production service
+  ilt-backend-secure:
+    build:
+      context: .
+      dockerfile: Dockerfile.enhanced
+      target: secure
+    container_name: ilt-backend-secure
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://neondb_owner:npg_t3XHxm0kiSbN@ep-still-bush-a8rhnfn6-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ilt-network
+
+  # Testing service
+  ilt-backend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.enhanced
+      target: testing
+    container_name: ilt-backend-test
+    environment:
+      - NODE_ENV=test
+      - DATABASE_URL=postgresql://neondb_owner:npg_t3XHxm0kiSbN@ep-still-bush-a8rhnfn6-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+    command: ["npm", "test"]
+    networks:
+      - ilt-network
+
+networks:
+  ilt-network:
+    driver: bridge
+
+# Optional: Add a service to run tests
+#  test-runner:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.enhanced
+#      target: testing
+#    container_name: test-runner
+#    environment:
+#      - NODE_ENV=test
+#      - DATABASE_URL=postgresql://neondb_owner:npg_t3XHxm0kiSbN@ep-still-bush-a8rhnfn6-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+#    command: ["npm", "test"]
+#    networks:
+#      - ilt-network 

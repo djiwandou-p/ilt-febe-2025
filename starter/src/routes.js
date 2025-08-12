@@ -4,6 +4,13 @@ const routes = (handler) => [
  * Define route for POST method
  */
   {
+    method: 'GET',
+    path: '/health',
+    handler: (request, h) => {
+      return h.response({ status: 'OK', timestamp: new Date().toISOString() }).code(200);
+    },
+  },
+  {
     method: 'POST',
     path: '/products',
     handler: handler.addProductHandler,
