@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://neondb_owner:npg_t3XHxm0kiSbN@ep-still-bush-a8rhnfn6-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+    restart: unless-stopped
+    depends_on: []
+    networks:
+      - app-network
+
+  # Uncomment if you want to run a local PostgreSQL instance for development
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_DB: neondb
+  #     POSTGRES_USER: neondb_owner
+  #     POSTGRES_PASSWORD: npg_t3XHxm0kiSbN
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# Uncomment if using local PostgreSQL
+# volumes:
+#   postgres_data: 
